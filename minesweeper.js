@@ -313,7 +313,7 @@ function initTimer(elapsed)
 {
 	function startTimer(){
 		const start = Date.now();
-		iTimer = setInterval( updateTime(start, elapsed), 1000 );
+		iTimer = setInterval( updateTime, 1000, start, elapsed);
 		context["board"].removeEventListener('mouseup', startTimer);
 	}
 	context["board"].addEventListener('mouseup', startTimer);
