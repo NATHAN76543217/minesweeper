@@ -121,13 +121,22 @@ function endGame(result)
 
 function checkWin()
 {
+	// check if only bomb remains
+	let allBomb = true;
+	const hiddenBox = map.filter(function(box) {
+		return (box.hide === true);
+	});
+	for (let box of hiddenBox)
+		if (box.isBomb !== true)
+			allBomb = false;
+	if (allBomb)
+		return true;
+	// check if all bomb have a flag
 	if (nbBomb != 0)
 		return false;
 	for (let bomb of bomblist)
-	{
 		if (!bomb.sqr.classList.contains('flagged'))
 			return false;
-	}
 	return true;
 }
 
@@ -226,8 +235,11 @@ function leftClick(box)
 		box.flagged = false;
 		context["flags"].innerHTML = "<img src=\"img/flag.png\">" + ++nbBomb;
 	}
-	else if (box.hide && nbBomb > 0)
+	else if (box.hide)
 	{
+		// cap nb flag to nb bomb
+		// if (nbBomb <= 0)
+		// 	return ;
 		box.sqr.classList.add('flagged');
 		box.flagged = true;
 		context["flags"].innerHTML = "<img src=\"img/flag.png\">" + --nbBomb;
