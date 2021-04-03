@@ -2,12 +2,12 @@ let context = {};
 let map = [];
 let bomblist = [];
 
-//TODO Question sur section/aside
+//TODO Question sur les balises section/aside dans highsxores.html
 
 const mapSize = [{width:10, height:10}, {width:12, height:12}, {width:15, height:15}];
 let level = 0;
 let nbBomb = 10;
-let timer = 0;
+let g_timer = 0;
 let iTimer = 0;
 
 function gameInProgress()
@@ -21,6 +21,7 @@ function gameInProgress()
 function resumeGame()
 {
 	console.log("resume game");
+
 	//get saved data
 	const state = JSON.parse(localStorage.getItem("state"));
 	const content = localStorage.getItem("html");
@@ -28,7 +29,7 @@ function resumeGame()
 
 	//fill variables with data
 	if(content && state) {
-		timer	= state["time"];
+		g_timer	= state["time"];
 		map		= state["map"];
 		nbBomb	= state["nbBomb"];
 		level	= state["level"];
@@ -39,7 +40,7 @@ function resumeGame()
 	loadContext();
 
 	//restore listener and interval
-	initTimer(timer);
+	initTimer(g_timer);
 	map.forEach((box, ndx) => {
 		box.sqr = context["boxes"].shift();
 		addListener(box);
@@ -54,13 +55,20 @@ function saveGame()
 {
 	// console.log("save game");
 	const state = {
-		"time": timer,
+		"time": g_timer,
 		"map": map,
 		"nbBomb": nbBomb,
 		"level": level
 	}
 	localStorage.setItem("html", document.body.innerHTML)
 	localStorage.setItem("state", JSON.stringify(state));
+}
+
+function formatTime(time)
+{
+	const sec = time % 60;
+	const min = Math.floor(time / 60);
+	return min + ":" + sec;
 }
 
 function enterName()
@@ -72,12 +80,13 @@ function enterName()
 		console.log("Name =", name);
 		if (name.length > 0 && name.length <= 10)
 		{
-			localStorage.setItem("lastName", name);
+			saveScore(name, g_timer);
 			localStorage.removeItem("html");
 			localStorage.removeItem("state");
 			return true;
 		}
-		context["menuTxt"].innerHTML = "<strong>Enter beetween 1 and 10 characters.<Strong>";
+		else
+			context["menuTxt"].innerHTML = "<strong>Enter beetween 1 and 10 characters.<Strong>";
 		return false
 	}
 	else
@@ -95,18 +104,15 @@ function endGame(result)
 	const endMenu = document.querySelector(".endMenu");
 	endMenu.style.visibility = "visible";
 	if (result === "win")
+		context["menuTxt"].innerHTML = "<h2>You&nbsp;win&nbsp;in&nbsp;" + g_timer + "&nbsp;seconds</h2>";
+	else // if loose
 	{
-		context["menuTxt"].innerHTML = "<h2>You&nbsp;win&nbsp;in&nbsp;" + timer + "&nbsp;seconds</h2>";
-		localStorage.setItem("lastTime", timer);
-	}
-	else
-	{
-		context["inputName"].style.display = "none";
-		//disable label
+		//disable input and label
 		const label = document.querySelector(".endMenu label");
 		label.textContent = "";
-		// document.querySelector(".endMenu a").onClick = null;
+		context["inputName"].style.display = "none";
 		context["menuTxt"].innerHTML += "<h1>You&nbsp;Loose!</h1>";
+		// for restarting a new game on refresh
 		localStorage.removeItem("html");
 		localStorage.removeItem("state");
 		
@@ -166,6 +172,7 @@ function addListener(box)
 
 function applyNear(box, func)
 {
+	//Apply a function to every neighbouring box
 	for (let i = -1; i <= 1; i++)
 	{
 		for (let t = -1; t <= 1; t++)
@@ -183,35 +190,30 @@ function applyNear(box, func)
 
 function rightClick(box)
 {
-	if (box.hide)
+	if (box.hide === false || box.sqr.classList.contains('flagged'))
+		return ;
+	box.hide = false;
+	box.sqr.classList.add('uncovered');
+	if (box.isBomb)
 	{
-		if (!box.sqr.classList.contains('flagged'))
+		box.sqr.classList.add('mined');
+		playAudio("boom");
+		endGame("loose");
+		return "loose";
+	}
+	else
+	{
+		playAudio("shovel");
+		box.sqr.classList.add("has-indicator")
+		if (box.near != 0)
+			box.sqr.dataset.mineCount = box.near; // set number on case
+		else
 		{
-			box.hide = false;
-			box.sqr.classList.add('uncovered');
-			if (box.isBomb)
-			{
-				map.audios["boom"].currentTime = 0; // if want to play it a 2nd time before first is over
-				map.audios["boom"].play();
-				box.sqr.classList.add('mined');
-				endGame("loose");
-				return "loose";
-			}
-			else
-			{
-				map.audios["shovel"].currentTime = 0; // if want to play it a 2nd time before first is over
-				map.audios["shovel"].play();
-				box.sqr.classList.add("has-indicator")
-				if (box.near != 0)
-					box.sqr.dataset.mineCount = box.near;
-				else
-				{
-					applyNear(box, (near) => {
-						if (map[near].hide == true)
-							triggerEvent(map[near].sqr, 'mouseup');
-					});
-				}
-			}
+			//box opening propagation 
+			applyNear(box, (near) => {
+				if (map[near].hide == true)
+					triggerEvent(map[near].sqr, 'mouseup');
+			});
 		}
 	}
 }
@@ -230,6 +232,21 @@ function leftClick(box)
 		box.flagged = true;
 		context["flags"].innerHTML = "<img src=\"img/flag.png\">" + --nbBomb;
 	}	
+}
+
+function updateTime(start, elapsed)
+{
+	if (elapsed)
+		g_timer = Math.floor((Date.now() - start) / 1000) + elapsed; // in seconds
+	else
+		g_timer = Math.floor((Date.now() - start) / 1000); // in seconds
+	context["eTimer"].innerHTML = "<img src=\"img/time.png\">" + formatTime(g_timer);
+}
+
+function playAudio(track)
+{
+	map.audios[track].currentTime = 0; // if want to play it a 2nd time before first is over
+	map.audios[track].play();
 }
 
 function loadAudio()
@@ -265,8 +282,8 @@ function initMap()
     map.forEach((box, ndx) => {
 		box.x = ndx % mapSize[level].width;
 		box.y = Math.floor(ndx / mapSize[level].width);
-        box.sqr.classList.remove('mined', 'uncovered', "has-indicator", "flagged");
         box.sqr.removeAttribute('data-mine-count');
+        box.sqr.classList.remove('mined', 'uncovered', "has-indicator", "flagged");
         addListener(box);
     });
 }
@@ -276,7 +293,7 @@ function initBomb()
     let i = 0;
     while ( i < nbBomb)
     {
-		let ndx = Math.floor(Math.random() * map.length);
+		const ndx = Math.floor(Math.random() * map.length);
         let box = map[ndx];
         if (!box.isBomb)
         {
@@ -296,16 +313,7 @@ function initTimer(elapsed)
 {
 	function startTimer(){
 		const start = Date.now();
-		iTimer = setInterval(() => {
-			if (elapsed)
-			{
-				timer = Math.floor((Date.now() - start) / 1000) + elapsed; // in seconds
-				console.log("time = " +  elapsed + " + "  + Math.floor((Date.now() - start)/1000));
-			}
-			else
-				timer = Math.floor((Date.now() - start) / 1000); // in seconds
-			context["eTimer"].innerHTML = "<img src=\"img/time.png\">" + timer ;
-		}, 1000);
+		iTimer = setInterval( updateTime(start, elapsed), 1000 );
 		context["board"].removeEventListener('mouseup', startTimer);
 	}
 	context["board"].addEventListener('mouseup', startTimer);
@@ -325,6 +333,7 @@ function init()
 //TODO reduce stack utilisation
 //TODO don't save game state when propagation
 
+// Start
 if (gameInProgress())
 	resumeGame();
 else
