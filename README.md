@@ -8,7 +8,7 @@ For playing to minesweeper, clone this repo and run: `open index.html`.
 
 ### Subject
 
-The project subject can be found in `subject/` directory. Thanks to <https://github.com/Gilux/minesweeper-test-project>.
+The project subject can be found in `subject/` directory. Thanks to [gilux repository](https://github.com/Gilux/minesweeper-test-project).
 
 ### Bonus
 
