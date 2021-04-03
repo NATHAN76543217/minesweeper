@@ -182,6 +182,7 @@ input
 {
   margin: 20px;
   height: 25px;
+  padding: 1px 5px;
   background-color: rgb(250, 248, 216);
   border-radius: 5px;
 }

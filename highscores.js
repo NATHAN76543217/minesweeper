@@ -41,23 +41,22 @@ function addToPodium()
     let i = 1;
     for (i; i <= 3; i++)
     {
-        if (podium[i]["time"] >= lastTime || podium[i]['time'] === "")
+        if (parseInt(podium[i]["time"]) >= parseInt(lastTime) || podium[i]['time'] === "")
         {
-            console.log("in i ==", i);
-            if (podium[i]["time"] != lastTime)
+            // console.log("in i ==", i);
+            if (parseInt(podium[i]["time"]) != lastTime)
             {
                 for (let y = 2 ; y >= i; --y)
                 {
-                    console.log("w i ==", i);
+                    // console.log("w i ==", i);
                     podium[y + 1]["name"] = podium[y]["name"];
                     podium[y + 1]["time"] = podium[y]["time"]; 
                 }
             }
-            console.log("out i ==", i);
+            // console.log(x"out i ==", i);
             podium[i]["name"] = lastName;
             podium[i]["time"] = lastTime;
             break ;
-        //TODO ajouter enter your name in <input>
         }
     }
     localStorage.setItem('highscores', JSON.stringify(podium));

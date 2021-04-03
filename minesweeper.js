@@ -1,43 +1,91 @@
-const flags = document.querySelector(".flags");
-const boxes = [...document.getElementsByClassName('box')];
-const eTimer = document.querySelector(".time");
-const menuTxt = document.querySelector(".endMenu span");
-const inputName = document.querySelector(".endMenu input");
+let context = {};
+let map = [];
+let bomblist = [];
 
 //TODO Question sur section/aside
 
-let bomblist = [];
-const size = {width:10, height:10};
-let map = boxes.map(box=>{return {
-	sqr:box, 
-	x:0,
-	y:0,
-    hide:true,
-    isBomb:false,
-	near:0,
-	audios: null
-}});
+const mapSize = [{width:10, height:10}, {width:12, height:12}, {width:15, height:15}];
+let level = 0;
 let nbBomb = 10;
 let timer = 0;
 let iTimer = 0;
 
+function gameInProgress()
+{
+	if (localStorage.getItem("state") != null && localStorage.getItem("html") != null)
+		return true;
+	else
+		return false;
+}
+
+function resumeGame()
+{
+	console.log("resume game");
+	//get saved data
+	const state = JSON.parse(localStorage.getItem("state"));
+	const content = localStorage.getItem("html");
+	const endMenu = document.querySelector(".endMenu");
+
+	//fill variables with data
+	if(content && state) {
+		timer	= state["time"];
+		map		= state["map"];
+		nbBomb	= state["nbBomb"];
+		level	= state["level"];
+		document.body.innerHTML = content
+		endMenu.style.visibility = "hidden";
+		loadAudio();
+	}
+	loadContext();
+
+	//restore listener and interval
+	initTimer(timer);
+	map.forEach((box, ndx) => {
+		box.sqr = context["boxes"].shift();
+		addListener(box);
+	});
+	//check game state
+	if (checkWin())
+		endGame("win");
+
+}
+
+function saveGame()
+{
+	// console.log("save game");
+	const state = {
+		"time": timer,
+		"map": map,
+		"nbBomb": nbBomb,
+		"level": level
+	}
+	localStorage.setItem("html", document.body.innerHTML)
+	localStorage.setItem("state", JSON.stringify(state));
+}
+
 function enterName()
 {
+
 	if (checkWin())
 	{
-		
-		const name = inputName.value;
+		const name = context["inputName"].value;
 		console.log("Name =", name);
 		if (name.length > 0 && name.length <= 10)
 		{
-			localStorage.setItem("lastName", name)
+			localStorage.setItem("lastName", name);
+			localStorage.removeItem("html");
+			localStorage.removeItem("state");
 			return true;
 		}
-		menuTxt.innerHTML = "<strong>Enter beetween 1 and 10 characters.<Strong>";
+		context["menuTxt"].innerHTML = "<strong>Enter beetween 1 and 10 characters.<Strong>";
 		return false
 	}
 	else
-		return true;
+	{
+		localStorage.removeItem("html");
+		localStorage.removeItem("state");
+		return true;	
+	}
 }
 
 function endGame(result)
@@ -48,17 +96,19 @@ function endGame(result)
 	endMenu.style.visibility = "visible";
 	if (result === "win")
 	{
-		menuTxt.innerHTML = "<h2>You&nbsp;win&nbsp;in&nbsp;" + timer + "&nbsp;seconds</h2>";
+		context["menuTxt"].innerHTML = "<h2>You&nbsp;win&nbsp;in&nbsp;" + timer + "&nbsp;seconds</h2>";
 		localStorage.setItem("lastTime", timer);
 	}
 	else
 	{
-		inputName.style.display = "none";
+		context["inputName"].style.display = "none";
 		//disable label
 		const label = document.querySelector(".endMenu label");
 		label.textContent = "";
-		document.querySelector(".endMenu a").onClick = null;
-		menuTxt.innerHTML += "<h1>You&nbsp;Loose!</h1>";
+		// document.querySelector(".endMenu a").onClick = null;
+		context["menuTxt"].innerHTML += "<h1>You&nbsp;Loose!</h1>";
+		localStorage.removeItem("html");
+		localStorage.removeItem("state");
 		
 	}
 }
@@ -91,6 +141,29 @@ function triggerEvent(el, type){
 	 }
 }
 
+function addListener(box)
+{
+	box.sqr.addEventListener('contextmenu', event => event.preventDefault());
+	box.sqr.addEventListener('mouseup', function (event) {
+		event.preventDefault();
+		switch (event.button){
+			case 0:
+				if (rightClick(box) === "loose")
+					return ;
+				break;
+			case 2:
+				leftClick(box);
+				break;
+			default:
+				console.log("Not handled mouseup event");
+				break;
+		}
+		saveGame();
+		if (checkWin())
+			endGame("win");
+	});
+}
+
 function applyNear(box, func)
 {
 	for (let i = -1; i <= 1; i++)
@@ -99,9 +172,9 @@ function applyNear(box, func)
 		{
 			let h = box.y + i;
 			let w = box.x + t;
-			if (h >= 0 && h < size.height && w >= 0 && w < size.width)
+			if (h >= 0 && h < mapSize[level].height && w >= 0 && w < mapSize[level].width)
 			{
-				let near = (h * size.width) + w;
+				let near = (h * mapSize[level].width) + w;
 				func(near);
 			}
 		}
@@ -122,6 +195,7 @@ function rightClick(box)
 				map.audios["boom"].play();
 				box.sqr.classList.add('mined');
 				endGame("loose");
+				return "loose";
 			}
 			else
 			{
@@ -147,12 +221,14 @@ function leftClick(box)
 	if (box.sqr.classList.contains('flagged'))
 	{
 		box.sqr.classList.remove('flagged');
-		flags.innerHTML = "<img src=\"img/flag.png\">" + ++nbBomb;
+		box.flagged = false;
+		context["flags"].innerHTML = "<img src=\"img/flag.png\">" + ++nbBomb;
 	}
 	else if (box.hide && nbBomb > 0)
 	{
 		box.sqr.classList.add('flagged');
-		flags.innerHTML = "<img src=\"img/flag.png\">" + --nbBomb;
+		box.flagged = true;
+		context["flags"].innerHTML = "<img src=\"img/flag.png\">" + --nbBomb;
 	}	
 }
 
@@ -164,32 +240,34 @@ function loadAudio()
 	}
 }
 
+function loadContext()
+{
+	context["flags"] = document.querySelector(".flags");
+	context["boxes"] = [...document.getElementsByClassName('box')];
+	context["eTimer"] = document.querySelector(".time");
+	context["menuTxt"] = document.querySelector(".endMenu span");
+	context["inputName"] = document.querySelector(".endMenu input");
+	context["board"] = document.querySelector(".board");
+}
+
 function initMap()
 {
+	map = context["boxes"].map(box=>{return {
+		sqr:box, 
+		x:0,
+		y:0,
+		hide:true,
+		isBomb:false,
+		near:0,
+		audios: null,
+		flagged: false
+	}});
     map.forEach((box, ndx) => {
-		box.x = ndx % size.width;
-		box.y = Math.floor(ndx / size.width);
+		box.x = ndx % mapSize[level].width;
+		box.y = Math.floor(ndx / mapSize[level].width);
         box.sqr.classList.remove('mined', 'uncovered', "has-indicator", "flagged");
         box.sqr.removeAttribute('data-mine-count');
-        box.sqr.addEventListener('contextmenu', event => event.preventDefault());
-		box.sqr.addEventListener('mouseup', event => {
-			event.preventDefault();
-			// event.stopPropagation();
-			console.log(event.button);
-            switch (event.button){
-                case 0:
-					rightClick(box);
-					break;
-				case 2:
-					leftClick(box);
-					break;
-				default:
-					console.log("Not handled mouseup event");
-					break;
-            }
-			if (checkWin())
-				endGame("win");
-        })
+        addListener(box);
     });
 }
 
@@ -211,31 +289,43 @@ function initBomb()
             i++;
         }
     }
-	flags.innerHTML = "<img src=\"img/flag.png\">" + nbBomb;
+	context["flags"].innerHTML = "<img src=\"img/flag.png\">" + nbBomb;
 }
 
-function initTimer()
+function initTimer(elapsed)
 {
-	const board = document.querySelector(".board");
 	function startTimer(){
 		const start = Date.now();
 		iTimer = setInterval(() => {
-			timer = Math.floor((Date.now() - start) / 1000); // in seconds
-			eTimer.innerHTML = "<img src=\"img/time.png\">" + timer ;
-		});
-		board.removeEventListener('mouseup', startTimer);
+			if (elapsed)
+			{
+				timer = Math.floor((Date.now() - start) / 1000) + elapsed; // in seconds
+				console.log("time = " +  elapsed + " + "  + Math.floor((Date.now() - start)/1000));
+			}
+			else
+				timer = Math.floor((Date.now() - start) / 1000); // in seconds
+			context["eTimer"].innerHTML = "<img src=\"img/time.png\">" + timer ;
+		}, 1000);
+		context["board"].removeEventListener('mouseup', startTimer);
 	}
-	board.addEventListener('mouseup', startTimer);
+	context["board"].addEventListener('mouseup', startTimer);
 }
 
 function init()
 {
+	console.log("init");
+	loadContext();
     initMap();
+	loadAudio();
     initBomb();
 	initTimer();
-	loadAudio();
 }
 
-console.log("init");
-init();
+//TODO plusieurs difficultés
+//TODO reduce stack utilisation
+//TODO don't save game state when propagation
 
+if (gameInProgress())
+	resumeGame();
+else
+	init();
