@@ -28,9 +28,11 @@ ul {
 }
 
 .board {
-  width: 400px;
-  height: 400px;
+  /* width: 500px; */
+  /* height: 500px; */
+  max-height: 100%;
   background-color: #fff;
+  background-color: rgb(19, 88, 48);
 }
 
 .board, .score-indicator, .highscores {
@@ -43,8 +45,10 @@ ul {
 }
 
 .box {
-  width: 40px;
-  height: 40px;
+  /* width: 40px; */
+  /* height: 40px; */
+  min-width: 40px;
+  min-height: 40px;
   background-color: #ccc;
   background-size: 80% 80%;
   background-position: center;
@@ -191,4 +195,22 @@ input
 label
 {
   margin-bottom: 10px;
+}
+
+h3
+{
+  margin-top: 15px;
+}
+
+.levelSelector
+{
+  width: fit-content;
+  height: 100%;
+  margin: auto;
+  justify-content: center;
+}
+
+.leaderboard
+{
+  width: 100%;
 }

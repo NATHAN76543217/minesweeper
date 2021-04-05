@@ -4,11 +4,13 @@ let bomblist = [];
 
 //TODO Question sur les balises section/aside dans highsxores.html
 
-const mapSize = [{width:10, height:10}, {width:12, height:12}, {width:15, height:15}];
-let level = 0;
-let nbBomb = 10;
+const mapSize = {"easy": {width:10, height:10, bomb: 10}, "medium": {width:12, height:12, bomb: 15}, "hard":{width:15, height:15, bomb:20}};
+let level = "easy";
+let nbBomb = 0;
 let g_timer = 0;
 let iTimer = 0;
+
+// PERSISTENCE 
 
 function gameInProgress()
 {
@@ -51,7 +53,7 @@ function resumeGame()
 
 }
 
-function saveGame()
+function saveGameState()
 {
 	// console.log("save game");
 	const state = {
@@ -64,12 +66,7 @@ function saveGame()
 	localStorage.setItem("state", JSON.stringify(state));
 }
 
-function formatTime(time)
-{
-	const sec = time % 60;
-	const min = Math.floor(time / 60);
-	return min + ":" + sec;
-}
+// GAME END
 
 function enterName()
 {
@@ -80,7 +77,7 @@ function enterName()
 		console.log("Name =", name);
 		if (name.length > 0 && name.length <= 10)
 		{
-			saveScore(name, g_timer);
+			saveScore(name, g_timer, level);
 			localStorage.removeItem("html");
 			localStorage.removeItem("state");
 			return true;
@@ -140,6 +137,8 @@ function checkWin()
 	return true;
 }
 
+// GAMEPLAY
+
 function triggerEvent(el, type){
 	if ('createEvent' in document) {
 		 // modern browsers, IE9+
@@ -154,29 +153,6 @@ function triggerEvent(el, type){
 		 e.button = 0;
 		 el.fireEvent('on'+e.eventType, e);
 	 }
-}
-
-function addListener(box)
-{
-	box.sqr.addEventListener('contextmenu', event => event.preventDefault());
-	box.sqr.addEventListener('mouseup', function (event) {
-		event.preventDefault();
-		switch (event.button){
-			case 0:
-				if (rightClick(box) === "loose")
-					return ;
-				break;
-			case 2:
-				leftClick(box);
-				break;
-			default:
-				console.log("Not handled mouseup event");
-				break;
-		}
-		saveGame();
-		if (checkWin())
-			endGame("win");
-	});
 }
 
 function applyNear(box, func)
@@ -196,7 +172,7 @@ function applyNear(box, func)
 		}
 	}
 }
-
+// OnClick
 function rightClick(box)
 {
 	if (box.hide === false || box.sqr.classList.contains('flagged'))
@@ -218,11 +194,12 @@ function rightClick(box)
 			box.sqr.dataset.mineCount = box.near; // set number on case
 		else
 		{
-			//box opening propagation 
+			// open box propagation 
 			applyNear(box, (near) => {
 				if (map[near].hide == true)
 					triggerEvent(map[near].sqr, 'mouseup');
 			});
+			return "propagate";
 		}
 	}
 }
@@ -246,14 +223,32 @@ function leftClick(box)
 	}	
 }
 
-function updateTime(start, elapsed)
+function addListener(box)
 {
-	if (elapsed)
-		g_timer = Math.floor((Date.now() - start) / 1000) + elapsed; // in seconds
-	else
-		g_timer = Math.floor((Date.now() - start) / 1000); // in seconds
-	context["eTimer"].innerHTML = "<img src=\"img/time.png\">" + formatTime(g_timer);
+	box.sqr.addEventListener('contextmenu', event => event.preventDefault());
+	box.sqr.addEventListener('mouseup', function (event) {
+		event.preventDefault();
+		switch (event.button){
+			case 0:
+				const ret = rightClick(box);
+				if (ret === "loose" || ret === "propagate")
+					return ;
+				break;
+			case 2:
+				leftClick(box);
+				break;
+			default:
+				console.log("Not handled mouseup event");
+				break;
+		}
+		console.log("SAVE");
+		saveGameState();
+		if (checkWin())
+			endGame("win");
+	});
 }
+
+// AUDIO
 
 function playAudio(track)
 {
@@ -266,6 +261,68 @@ function loadAudio()
 	map.audios = {
 		"shovel" : document.querySelector("Audio#shovel"),
 		"boom" : document.querySelector("Audio#boom")
+	}
+}
+
+// TIME
+
+function initTimer(elapsed)
+{
+	function startTimer(){
+		const start = Date.now();
+		iTimer = setInterval( updateTime, 1000, start, elapsed);
+		context["board"].removeEventListener('mouseup', startTimer);
+	}
+	context["board"].addEventListener('mouseup', startTimer);
+}
+
+function formatTime(time)
+{
+	const sec = time % 60;
+	const min = Math.floor(time / 60);
+	return min + ":" + sec;
+}
+
+function updateTime(start, elapsed)
+{
+	if (elapsed)
+		g_timer = Math.floor((Date.now() - start) / 1000) + elapsed; // in seconds
+	else
+		g_timer = Math.floor((Date.now() - start) / 1000); // in seconds
+	context["eTimer"].innerHTML = "<img src=\"img/time.png\">" + formatTime(g_timer);
+}
+
+// INIT
+
+function init()
+{
+	console.log("init:", level);
+	document.querySelector("main .grid").style.display = "block";
+	createMap();
+	loadContext();
+    initMap();
+	loadAudio();
+    initBomb();
+	initTimer();
+}
+
+
+function createMap()
+{
+	const size = mapSize[level];
+	nbBomb = size.bomb;
+	let board = document.querySelector(".board .grid");
+	let firstLine = document.createElement("div");
+	firstLine.classList.add("row");
+	for (let i = 0; i < size.width; i++)
+	{
+		let sqr = document.createElement("button");
+		sqr.classList.add("box");
+		firstLine.appendChild(sqr);
+	}
+	for(let i = 0; i < size.height; i++)
+	{
+		board.appendChild(firstLine.cloneNode(true));
 	}
 }
 
@@ -321,32 +378,47 @@ function initBomb()
 	context["flags"].innerHTML = "<img src=\"img/flag.png\">" + nbBomb;
 }
 
-function initTimer(elapsed)
+// LEVELING
+function saveLevel()
 {
-	function startTimer(){
-		const start = Date.now();
-		iTimer = setInterval( updateTime, 1000, start, elapsed);
-		context["board"].removeEventListener('mouseup', startTimer);
-	}
-	context["board"].addEventListener('mouseup', startTimer);
+	level = this.getAttribute("data-value");
+	localStorage.setItem("level", level);
+	document.getElementById("levelSelector").style.display = "none";
+	init();
 }
 
-function init()
+function levelSelector()
 {
-	console.log("init");
-	loadContext();
-    initMap();
-	loadAudio();
-    initBomb();
-	initTimer();
+	const	difficulties = ["easy", "medium", "hard"];
+	let		ls = document.createElement('div');
+	
+	localStorage.removeItem("level");
+	ls.classList.add( "highscores", "levelSelector");
+	ls.innerHTML += "<h2 style='margin-bottom:30px;'>Select your difficulty</h2>";
+	ls.id = "levelSelector";
+	for (let diff of difficulties)
+	{
+		let btn = document.createElement('a');
+		btn.textContent = diff;
+		btn.setAttribute("data-value", diff);
+		btn.classList.add('btn');
+		btn.addEventListener('click', saveLevel);
+		ls.appendChild(btn);
+	}	
+	return ls;
 }
 
-//TODO plusieurs difficultés
+function selectLevelBox()
+{
+	const main = document.querySelector("main.board");
+	document.querySelector("main .grid").style.display = "none";
+	main.appendChild(levelSelector());
+}
+
 //TODO reduce stack utilisation
-//TODO don't save game state when propagation
 
 // Start
 if (gameInProgress())
 	resumeGame();
 else
-	init();
+	selectLevelBox();
