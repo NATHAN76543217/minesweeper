@@ -139,7 +139,7 @@ function checkWin()
 
 // GAMEPLAY
 
-function triggerEvent(el, type){
+async function triggerEvent(el, type){
 	if ('createEvent' in document) {
 		 // modern browsers, IE9+
 		 var e = document.createEvent('HTMLEvents');
@@ -289,7 +289,7 @@ function updateTime(start, elapsed)
 		g_timer = Math.floor((Date.now() - start) / 1000) + elapsed; // in seconds
 	else
 		g_timer = Math.floor((Date.now() - start) / 1000); // in seconds
-	context["eTimer"].innerHTML = "<img src=\"img/time.png\">" + formatTime(g_timer);
+	context["elTimer"].innerHTML = "<img src=\"img/time.png\">" + formatTime(g_timer);
 }
 
 // INIT
@@ -298,6 +298,7 @@ function init()
 {
 	console.log("init:", level);
 	document.querySelector("main .grid").style.display = "block";
+	document.querySelector("aside").style.display = "flex";
 	createMap();
 	loadContext();
     initMap();
@@ -330,7 +331,7 @@ function loadContext()
 {
 	context["flags"] = document.querySelector(".flags");
 	context["boxes"] = [...document.getElementsByClassName('box')];
-	context["eTimer"] = document.querySelector(".time");
+	context["elTimer"] = document.querySelector(".time");
 	context["menuTxt"] = document.querySelector(".endMenu span");
 	context["inputName"] = document.querySelector(".endMenu input");
 	context["board"] = document.querySelector(".board");
@@ -392,6 +393,7 @@ function levelSelector()
 	const	difficulties = ["easy", "medium", "hard"];
 	let		ls = document.createElement('div');
 	
+	document.querySelector("aside").style.display = "none";
 	localStorage.removeItem("level");
 	ls.classList.add( "highscores", "levelSelector");
 	ls.innerHTML += "<h2 style='margin-bottom:30px;'>Select your difficulty</h2>";

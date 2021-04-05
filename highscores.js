@@ -62,14 +62,14 @@ function displayPodium()
 		let place = clone.querySelectorAll("li");
 		if (scores[level] == null || Object.keys(scores[level]).length === 0)
 		{
-			place[0].innerHTML = "1. " + "xxxxx" + " <span class='time'>99min99sec</span>";
-			place[1].innerHTML = "2. " + "xxxxx" + " <span class='time'>99min99sec</span>";
-			place[2].innerHTML = "3. " + "xxxxx" + " <span class='time'>99min99sec</span>";
+			place[0].innerHTML = "1.&nbsp;&nbsp; " + "xxxxx" + " <span class='time'>99min99sec</span>";
+			place[1].innerHTML = "2.&nbsp;&nbsp; " + "xxxxx" + " <span class='time'>99min99sec</span>";
+			place[2].innerHTML = "3.&nbsp;&nbsp; " + "xxxxx" + " <span class='time'>99min99sec</span>";
 		}
 		else{
-			place[0].innerHTML = "1. " + scores[level]["1"]["name"] + " <span class='time'>" + formatScore(scores[level]["1"]["time"]) + "</span>";
-			place[1].innerHTML = "2. " + scores[level]["2"]["name"] + " <span class='time'>" + formatScore(scores[level]["2"]["time"]) + "</span>";
-			place[2].innerHTML = "3. " + scores[level]["3"]["name"] + " <span class='time'>" + formatScore(scores[level]["3"]["time"]) + "</span>";
+			place[0].innerHTML = "1.&nbsp;&nbsp; " + scores[level]["1"]["name"] + " <span class='time'>" + formatScore(scores[level]["1"]["time"]) + "</span>";
+			place[1].innerHTML = "2.&nbsp;&nbsp; " + scores[level]["2"]["name"] + " <span class='time'>" + formatScore(scores[level]["2"]["time"]) + "</span>";
+			place[2].innerHTML = "3.&nbsp;&nbsp; " + scores[level]["3"]["name"] + " <span class='time'>" + formatScore(scores[level]["3"]["time"]) + "</span>";
 		}
 		let title = document.createElement("h3");
 		title.textContent = level;
